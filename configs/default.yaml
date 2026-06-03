@@ -1,0 +1,71 @@
+# ============================================================
+# Lane-Detection-Temporal-Fusion Default Configuration
+# ============================================================
+
+model:
+  # Backbone
+  backbone: "resnet18"           # resnet18 | resnet34 | efficientnet-b0
+  pretrained: true
+  backbone_output_stride: 16     # 输出特征图下采样倍率
+
+  # Temporal Fusion
+  temporal:
+    num_frames: 5                # 时序窗口帧数
+    hidden_channels: 128         # ConvGRU 隐藏层通道数
+    use_attention: true          # 是否启用时序注意力
+    attention_reduction: 4       # SE 模块 reduction ratio
+
+  # Lane Head (Line-CNN)
+  lane_head:
+    num_anchors: 72              # 射线锚点数量 (角度离散化)
+    anchor_angles: [-72, 72]     # 锚点角度范围 (度)
+    num_regression_parameters: 4 # 每条车道线回归参数: x_offset, y_offset, length, angle_delta
+    classifier_hidden: 64        # 分类分支隐藏通道数
+
+  # Drivable Head
+  drivable_head:
+    num_classes: 3               # 0: background, 1: direct, 2: alternative
+    decoder_channels: [256, 128, 64]
+
+# Dataset
+data:
+  name: "culane"                 # culane | bdd100k
+  data_root: "./data/"
+  image_size: [288, 800]         # [H, W] — CULane 默认 288×800
+  num_frames: 5                  # 与 model.temporal.num_frames 保持一致
+  frame_interval: 1              # 帧间隔 (1=连续帧)
+  augment: true
+
+# Training
+train:
+  batch_size: 8
+  epochs: 80
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  lr_scheduler: "cosine"         # cosine | step | plateau
+  warmup_epochs: 3
+  gradient_clip: 10.0
+
+  # Loss weights
+  loss:
+    lane_cls_weight: 2.0         # 车道线分类损失权重 (Focal Loss)
+    lane_reg_weight: 1.0         # 车道线回归损失权重 (Smooth L1)
+    drivable_weight: 1.0         # 可行驶区域分割损失权重 (CE + Dice)
+
+# Evaluation
+eval:
+  metrics: ["f1", "precision", "recall", "miou"]
+  lane_iou_threshold: 0.5        # 车道线匹配 IoU 阈值
+  save_predictions: false
+
+# Logging
+logging:
+  log_dir: "./logs/"
+  checkpoint_dir: "./checkpoints/"
+  save_interval: 5               # 每隔 N 个 epoch 保存
+  tensorboard: true
+
+# Hardware
+device: "cuda"
+num_workers: 4
+seed: 42

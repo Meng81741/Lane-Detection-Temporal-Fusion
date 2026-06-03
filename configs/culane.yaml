@@ -1,0 +1,48 @@
+# CULane 车道线检测配置
+# 继承 default.yaml，覆盖数据集特定参数
+
+data:
+  name: "culane"
+  data_root: "./data/culane/"
+  image_size: [288, 800]
+  num_frames: 5
+  frame_interval: 1
+  augment: true
+
+model:
+  backbone: "resnet18"
+  pretrained: true
+
+  temporal:
+    num_frames: 5
+    hidden_channels: 128
+    use_attention: true
+    attention_reduction: 4
+
+  lane_head:
+    num_anchors: 72
+    anchor_angles: [-72, 72]
+    num_regression_parameters: 4
+    classifier_hidden: 64
+
+  # CULane 主要关注车道线，但保留可行驶区域头用于辅助训练
+  drivable_head:
+    num_classes: 3
+    decoder_channels: [256, 128, 64]
+
+train:
+  batch_size: 8
+  epochs: 80
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  lr_scheduler: "cosine"
+  warmup_epochs: 3
+
+  loss:
+    lane_cls_weight: 2.0
+    lane_reg_weight: 1.0
+    drivable_weight: 0.5    # CULane 中降低可行驶区域权重
+
+eval:
+  metrics: ["f1", "precision", "recall"]
+  lane_iou_threshold: 0.5
